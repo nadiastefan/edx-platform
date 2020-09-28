@@ -286,29 +286,30 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         prereq_met = True
         prereq_meta_info = {}
 
-        # Content type gating for FBE previously only gated individual blocks
-        # This was an issue because audit learners could start a timed exam and then be unable to complete the exam
-        # even if they later upgrade because the timer would have expired.
-        # For this reason we check if content gating is enabled for the user and gate the entire sequence in that case
-        # This functionality still needs to be replicated in the frontend-app-learning courseware MFE
-        # The ticket to track this is https://openedx.atlassian.net/browse/REV-1220
-        # Note that this will break compatability with using sequences outside of edx-platform
-        # but we are ok with this for now
-        if self.is_time_limited:
-            try:
-                user = User.objects.get(id=self.runtime.user_id)
-                # importing here to avoid a circular import
-                from openedx.features.content_type_gating.models import ContentTypeGatingConfig
-                from openedx.features.content_type_gating.helpers import CONTENT_GATING_PARTITION_ID
-                if ContentTypeGatingConfig.enabled_for_enrollment(user=user, course_key=self.runtime.course_id):
-                    # Get the content type gating locked content fragment to render for this sequence
-                    partition = self.descriptor._get_user_partition(CONTENT_GATING_PARTITION_ID)  # pylint: disable=protected-access
-                    user_group = partition.scheme.get_group_for_user(self.runtime.course_id, user, partition)
-                    self.gated_sequence_fragment = partition.access_denied_fragment(
-                        self.descriptor, user, user_group, []
-                    )
-            except User.DoesNotExist:
-                pass
+        if TIMED_EXAM_GATING_WAFFLE_FLAG.is_enabled():
+            # Content type gating for FBE previously only gated individual blocks
+            # This was an issue because audit learners could start a timed exam and then be unable to complete the exam
+            # even if they later upgrade because the timer would have expired.
+            # For this reason we check if content gating is enabled for the user and gate the entire sequence in that case
+            # This functionality still needs to be replicated in the frontend-app-learning courseware MFE
+            # The ticket to track this is https://openedx.atlassian.net/browse/REV-1220
+            # Note that this will break compatability with using sequences outside of edx-platform
+            # but we are ok with this for now
+            if self.is_time_limited:
+                try:
+                    user = User.objects.get(id=self.runtime.user_id)
+                    # importing here to avoid a circular import
+                    from openedx.features.content_type_gating.models import ContentTypeGatingConfig
+                    from openedx.features.content_type_gating.helpers import CONTENT_GATING_PARTITION_ID
+                    if ContentTypeGatingConfig.enabled_for_enrollment(user=user, course_key=self.runtime.course_id):
+                        # Get the content type gating locked content fragment to render for this sequence
+                        partition = self.descriptor._get_user_partition(CONTENT_GATING_PARTITION_ID)  # pylint: disable=protected-access
+                        user_group = partition.scheme.get_group_for_user(self.runtime.course_id, user, partition)
+                        self.gated_sequence_fragment = partition.access_denied_fragment(
+                            self.descriptor, user, user_group, []
+                        )
+                except User.DoesNotExist:
+                    pass
 
         if self._required_prereq():
             if self.runtime.user_is_staff:

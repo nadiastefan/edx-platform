@@ -10,12 +10,15 @@ from datetime import timedelta
 
 import ddt
 import six
+from django.conf import settings
 from django.utils.timezone import now
 from freezegun import freeze_time
 from mock import Mock, patch
 from six.moves import range
 
-from xmodule.seq_module import SequenceModule
+from openedx.core.djangoapps.waffle_utils.testutils import override_waffle_flag
+from student.tests.factories import UserFactory
+from xmodule.seq_module import TIMED_EXAM_GATING_WAFFLE_FLAG, SequenceModule
 from xmodule.tests import get_test_system
 from xmodule.tests.helpers import StubUserService
 from xmodule.tests.xml import XModuleXmlImportTest
@@ -60,6 +63,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         xml.ChapterFactory.build(parent=course)  # has 0 child sequences
         chapter_3 = xml.ChapterFactory.build(parent=course)  # has 1 child sequence
         chapter_4 = xml.ChapterFactory.build(parent=course)  # has 1 child sequence, with hide_after_due
+        chapter_5 = xml.ChapterFactory.build(parent=course)  # has 1 child sequence, with a time limit
 
         xml.SequenceFactory.build(parent=chapter_1)
         xml.SequenceFactory.build(parent=chapter_1)
@@ -72,6 +76,11 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
 
         for _ in range(3):
             xml.VerticalFactory.build(parent=sequence_3_1)
+
+        sequence_5_1 = xml.SequenceFactory.build(
+            parent=chapter_5,
+            is_time_limited=str(True)
+        )
 
         return course
 
@@ -148,6 +157,54 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         self.assertIn("'next_url': 'NextSequential'", html)
         self.assertIn("'prev_url': 'PrevSequential'", html)
         self.assertNotIn("fa fa-check-circle check-circle is-hidden", html)
+
+    @patch('xmodule.seq_module.User.objects.get', return_value=UserFactory.build())
+    def test_render_student_view_with_gating(self, mocked_user):
+        """
+        Make sure that the student view of time limited content is:
+        - checked for access if the waffle flag is on
+        - not checked for access if the waffle flag is off
+        """
+        # the order of the overrides is important since the `assert_not_called` does
+        # not appear to be limited to just the override_waffle_flag = False scope
+        with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=False):
+            html = self._get_rendered_view(
+                self.sequence_5_1,
+                extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
+                view=STUDENT_VIEW
+            )
+            mocked_user.assert_not_called()
+
+        with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=True):
+            html = self._get_rendered_view(
+                self.sequence_5_1,
+                extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
+                view=STUDENT_VIEW
+            )
+            mocked_user.assert_called_once()
+
+    @patch('xmodule.seq_module.User.objects.get', return_value=UserFactory.build())
+    def test_render_public_view_with_gating(self, mocked_user):
+        """
+        Make sure that the public view of time limited content is not checked for access
+        regardless of the waffle flag status.
+        """
+        with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=False):
+            html = self._get_rendered_view(
+                self.sequence_5_1,
+                extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
+                view=PUBLIC_VIEW
+            )
+            mocked_user.assert_not_called()
+
+        with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=True):
+            html = self._get_rendered_view(
+                self.sequence_5_1,
+                extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
+                view=PUBLIC_VIEW
+            )
+            mocked_user.assert_not_called()
+
 
     @ddt.unpack
     @ddt.data(
