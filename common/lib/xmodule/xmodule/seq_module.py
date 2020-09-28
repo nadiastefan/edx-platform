@@ -11,12 +11,11 @@ import logging
 from datetime import datetime
 from functools import reduce
 
-from pkg_resources import resource_string
-
 import six
 from django.contrib.auth.models import User
 from lxml import etree
 from opaque_keys.edx.keys import UsageKey
+from pkg_resources import resource_string
 from pytz import UTC
 from six import text_type
 from web_fragments.fragment import Fragment
@@ -24,6 +23,8 @@ from xblock.completable import XBlockCompletionMode
 from xblock.core import XBlock
 from xblock.exceptions import NoSuchServiceError
 from xblock.fields import Boolean, Integer, List, Scope, String
+
+from openedx.core.djangoapps.waffle_utils import WaffleFlag
 
 from .exceptions import NotFoundError
 from .fields import Date
@@ -47,6 +48,11 @@ class_priority = ['video', 'problem']
 #  `django.utils.translation.ugettext_noop` because Django cannot be imported in this file
 _ = lambda text: text
 
+TIMED_EXAM_GATING_WAFFLE_FLAG = WaffleFlag(
+    waffle_namespace="xmodule",
+    flag_name=u'rev_1377_rollout',
+    module_name=__name__,
+)
 
 class SequenceFields(object):
     has_children = True
