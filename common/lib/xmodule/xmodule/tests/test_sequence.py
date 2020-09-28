@@ -10,7 +10,6 @@ from datetime import timedelta
 
 import ddt
 import six
-from django.conf import settings
 from django.utils.timezone import now
 from freezegun import freeze_time
 from mock import Mock, patch
@@ -77,7 +76,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         for _ in range(3):
             xml.VerticalFactory.build(parent=sequence_3_1)
 
-        sequence_5_1 = xml.SequenceFactory.build(
+        xml.SequenceFactory.build(
             parent=chapter_5,
             is_time_limited=str(True)
         )
@@ -168,7 +167,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         # the order of the overrides is important since the `assert_not_called` does
         # not appear to be limited to just the override_waffle_flag = False scope
         with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=False):
-            html = self._get_rendered_view(
+            self._get_rendered_view(
                 self.sequence_5_1,
                 extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
                 view=STUDENT_VIEW
@@ -176,7 +175,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
             mocked_user.assert_not_called()
 
         with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=True):
-            html = self._get_rendered_view(
+            self._get_rendered_view(
                 self.sequence_5_1,
                 extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
                 view=STUDENT_VIEW
@@ -190,7 +189,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         regardless of the waffle flag status.
         """
         with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=False):
-            html = self._get_rendered_view(
+            self._get_rendered_view(
                 self.sequence_5_1,
                 extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
                 view=PUBLIC_VIEW
@@ -198,13 +197,12 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
             mocked_user.assert_not_called()
 
         with override_waffle_flag(TIMED_EXAM_GATING_WAFFLE_FLAG, active=True):
-            html = self._get_rendered_view(
+            self._get_rendered_view(
                 self.sequence_5_1,
                 extra_context=dict(next_url='NextSequential', prev_url='PrevSequential'),
                 view=PUBLIC_VIEW
             )
             mocked_user.assert_not_called()
-
 
     @ddt.unpack
     @ddt.data(

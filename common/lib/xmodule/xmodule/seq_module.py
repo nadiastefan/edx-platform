@@ -54,6 +54,7 @@ TIMED_EXAM_GATING_WAFFLE_FLAG = WaffleFlag(
     module_name=__name__,
 )
 
+
 class SequenceFields(object):
     has_children = True
     completion_mode = XBlockCompletionMode.AGGREGATOR
@@ -290,7 +291,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
             # Content type gating for FBE previously only gated individual blocks
             # This was an issue because audit learners could start a timed exam and then be unable to complete the exam
             # even if they later upgrade because the timer would have expired.
-            # For this reason we check if content gating is enabled for the user and gate the entire sequence in that case
+            # For this reason we check if content gating is enabled for the user
+            # and gate the entire sequence in that case
             # This functionality still needs to be replicated in the frontend-app-learning courseware MFE
             # The ticket to track this is https://openedx.atlassian.net/browse/REV-1220
             # Note that this will break compatability with using sequences outside of edx-platform
