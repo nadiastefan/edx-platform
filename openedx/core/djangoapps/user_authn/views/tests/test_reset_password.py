@@ -486,7 +486,7 @@ class ResetPasswordTests(EventTestMixin, CacheIsolationTestCase):
         self.assertEqual(expected_user_password, user.password)
 
         self.assert_email_sent_successfully({
-            'subject': 'password has changed',
+            'subject': 'Password reset completed',
             'body': 'This is to confirm that you have successfully changed your password'
         })
 
